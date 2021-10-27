@@ -25,12 +25,14 @@ public class Producto
    @Column(name="precio_unitario")
    private int precioUnitario;
    
+   @ManyToOne
+   @JoinColumn(name = "id_categoria")
+   private Categoria categoria;
    
    public int getIdProducto()
    {
       return idProducto;
    }
-
    public void setIdProducto(int idProducto)
    {
       this.idProducto=idProducto;
@@ -40,7 +42,6 @@ public class Producto
    {
       return descripcion;
    }
-
    public void setDescripcion(String descripcion)
    {
       this.descripcion=descripcion;
@@ -50,7 +51,6 @@ public class Producto
    {
       return proveedor;
    }
-
    public void setProveedor(Proveedor proveedor)
    {
       this.proveedor=proveedor;
@@ -65,5 +65,10 @@ public class Producto
       this.precioUnitario = precioUnitario;
    }
    
-   
+   public Categoria getCategoria(){
+	   return categoria;
+   }
+   public void setCategoria(Categoria categoria){
+	   this.categoria = categoria;
+   }
 }
