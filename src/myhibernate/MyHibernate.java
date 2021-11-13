@@ -98,7 +98,7 @@ public class MyHibernate
 						}
 					}
 					
-					// Cuando el valor es un objeto que hay que instanciar primero, se busca de manera recursiva
+					// Cuando el valor es un objeto que hay que instanciarlo primero, se busca de manera recursiva
 					JoinColumn jc = (JoinColumn)f.getDeclaredAnnotation(JoinColumn.class);
 					if (jc != null && setter != null) 
 					{
@@ -131,17 +131,43 @@ public class MyHibernate
 		return (T)newClass;
 	}
 
-	
 	public static <T> List<T> findAll(Class<T> clazz)
 	{
-		// PROGRAMAR AQUI
-		return null;
+		List<Integer> ids = findIdsWithCondition(clazz, "", null);  
+//		System.out.println(ids);
+					
+		List<T> classList = new ArrayList<T>();
+		
+		// Itero sobre los ids obtenidos, instanciando cada objeto y agregandolos a la lista
+		for(Integer id : ids)
+			classList.add(find(clazz, id));
+		
+		return classList;
 	}
-	
-	public static Query createQuery(String hql)
+
+	public static <T> List<T> findAllWithCondition(Class<T> clazz, String sqlJoins, Object condition)
 	{
-		// PROGRAMAR AQUI
-		return null;
+		List<Integer> ids = findIdsWithCondition(clazz, sqlJoins, condition);  
+//		System.out.println(ids);
+					
+		List<T> classList = new ArrayList<T>();
+		
+		// Itero sobre los ids obtenidos, instanciando cada objeto y agregandolos a la lista
+		for(Integer id : ids)
+			classList.add(find(clazz, id));
+		
+		return classList;
+	}	
+	
+	public static Query createQuery(String hql) 
+	{
+		Query q = new Query();
+		q.setHql(hql);
+//		for(String s : hqlArgs)
+//			System.out.println(s);
+		
+//		System.out.println(q.objectClass);
+		return q;
 	}
 	
 	public static <T> String generateQuery(Class<T> clazz, int id)
@@ -173,9 +199,68 @@ public class MyHibernate
 			SQLQuery += columns.get(i);
 		}
 		SQLQuery += " from " + table.name();
-		SQLQuery += " where "+ columns.get(0) + "=?";
+		if(id >= 0)
+			SQLQuery += " where "+ columns.get(0) + "=?";
 		return SQLQuery;
 		
+	}
+	
+	// Deevuelve los ids de todos los objetos de la clase que cumplan con la condicion, de haberla.
+	public static <T> List<Integer> findIdsWithCondition(Class<T> clazz, String queryJoins, Object condition)
+	{
+		List<Integer> ids = new ArrayList<Integer>();
+		PreparedStatement statement = null;
+		ResultSet resultSet = null;
+		Table table = (Table)clazz.getDeclaredAnnotation(Table.class);
+		
+		// Obtengo la columna de ids de la clase
+		Field idField = clazz.getDeclaredFields()[0];
+		Column c = (Column)idField.getDeclaredAnnotation(Column.class);
+		String idColumn = null;
+		if (c != null) 
+			idColumn = c.name();
+
+		String SQLQuery = "select " + idColumn + " from " + table.name();
+		if (queryJoins.length() > 0){
+			SQLQuery += queryJoins;
+		}
+		System.out.println(SQLQuery);
+		
+		try
+		{
+			Connection connection = getConnection();
+			statement = connection.prepareStatement(SQLQuery);
+			if (queryJoins.length() > 0){
+				SQLQuery += queryJoins;
+				statement.setObject(1, condition);			
+			}
+			resultSet = statement.executeQuery();
+
+			while(resultSet.next()) //deberia haber uno solo
+			{
+				ids.add(resultSet.getInt(1));
+				
+			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+		finally
+		{
+			try
+			{
+				if(resultSet != null) resultSet.close();
+				if(statement != null) statement.close();
+			}
+			catch(Exception e2)
+			{
+				e2.printStackTrace();
+				throw new RuntimeException(e2);
+			}
+		}
+		return ids;
 	}
 	
 	public static Connection getConnection()
@@ -198,14 +283,4 @@ public class MyHibernate
 			throw new RuntimeException(e);	
 		}
 	}
-	
-	  private static boolean isSetter(Method method)
-	  {
-	    // identify set methods
-	    if(method.getName().startsWith("set") && method.getParameterCount() == 1 
-	        && method.getReturnType().equals(void.class)){
-	      return true;
-	    }
-	    return false;    
-	  }
 }
